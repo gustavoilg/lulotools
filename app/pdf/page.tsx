@@ -1,14 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
-export default function PdfToImagePage() {
+export default function PdfToImage() {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
 
   useEffect(() => {
-    // Adiciona PDF.js no navegador
     const script = document.createElement("script");
-    script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.9.179/pdf.min.js";
+    script.src = "https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js";
     script.async = true;
     document.body.appendChild(script);
   }, []);
@@ -19,27 +18,21 @@ export default function PdfToImagePage() {
     const arrayBuffer = await pdfFile.arrayBuffer();
 
     // @ts-ignore
-    const pdfjsLib = window["pdfjs-dist/build/pdf"];
+    const pdfLib = window.PDFLib;
+    const pdfDoc = await pdfLib.PDFDocument.load(arrayBuffer);
 
-    // @ts-ignore
-    pdfjsLib.GlobalWorkerOptions.workerSrc =
-      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.9.179/pdf.worker.min.js";
+    const pages = pdfDoc.getPages();
+    const firstPage = pages[0];
 
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    const page = await pdf.getPage(1);
-    const viewport = page.getViewport({ scale: 2 });
+    const { width, height } = firstPage.getSize();
 
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d")!;
+    const png = await pdfDoc.saveAsBase64({ dataUri: true });
 
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-
-    await page.render({ canvasContext: ctx, viewport }).promise;
-
-    const img = canvas.toDataURL("image/png");
-    const win = window.open();
-    win?.document.write(`<img src="${img}" style="width:100%">`);
+    const newWindow = window.open();
+    newWindow?.document.write(`
+      <h2>Primeira página do PDF</h2>
+      <img src="${png}" style="width:100%;max-width:800px;">
+    `);
   };
 
   return (
@@ -53,8 +46,11 @@ export default function PdfToImagePage() {
         onChange={(e) => setPdfFile(e.target.files?.[0] || null)}
       />
 
-      <button className="bg-blue-600 text-white p-2 rounded" onClick={convert}>
-        Converter
+      <button
+        onClick={convert}
+        className="bg-blue-600 text-white p-3 rounded"
+      >
+        Converter PDF
       </button>
     </div>
   );
